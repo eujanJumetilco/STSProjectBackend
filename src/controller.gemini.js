@@ -14,42 +14,82 @@ const genAI = new GoogleGenerativeAI(process.env.API_KEY);
 
 export async function evaluateContent(inputText, base64Image = null, mimeType = null) { 
     try {
-        const model = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" });
-        const prompt = 
+        //const model = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" });
+        const model = genAI.getGenerativeModel({ 
+            // CHANGE THIS: 'gemini-1.5-flash' is often deprecated in favor of:
+            model: "gemini-2.5-flash", 
+            tools: [{ googleSearch: {} }] 
+        });
+        const today = new Date();
+        const formattedDate = today.toLocaleDateString(); 
+
+        const oldPrompt = 
         `
+            TODAY'S DATE: ${formattedDate}
+
             You are an AI assistant designed to analyze potential misinformation in social media content, specifically in the Philippine context. Your task is NOT to determine absolute truth, but to evaluate the RISK that the content may be misleading, false, or lacking context.
+
+            GROUNDING INSTRUCTION:
+            Before analyzing, you MUST use your Google Search tool to verify the current status of the people, events, and claims mentioned in the inputText. Compare the inputText against the most recent reputable news reports (from 2025-2026) to identify discrepancies or "zombie" misinformation (old news being shared as new).
 
             ANALYSIS CRITERIA:
 
-            Identify Claims: Break the text into separate, identifiable statements.
+            Identify Claims: Break the text into separate, identifiable statements. Include claims found within images if attached.
 
-            Assess Evidence & Language: Check for citations, vagueness, emotional/sensational wording, and missing context.
+            Assess Evidence & Language: Check for citations, emotional/sensational wording, and missing context.
 
             Philippine Context: Consider local events (elections, typhoons, holidays), common local misinformation patterns, and Tagalog/Taglish nuances.
 
             Assign Risk: LOW (credible), MEDIUM (suspicious/unverified), or HIGH (misleading/exaggerated).
 
+            Visual Integrity: Detect image fraud like fake news templates, mismatched fonts/logos, AI artifacts, or captions contradicting visual evidence.
+
             OUTPUT RULES:
-
-            You must use the exact tag structure provided below for every claim identified.
-
-            Do NOT use bullet points, bolding (**), or numbering.
-
-            DO NOT use any special characters or text enclosing methods such as: \"solely because of qualifications\"
-
-            ONLY FOLLOW THE FORMAT don't add anything else like /n because the developers will destructure the response content
-
-            Do NOT include any introductory text or closing remarks.
-
-            Each claim analysis must be a self-contained block using the tags.
-
-            Use a concise, factual tone within the tags.
+            - You must use the exact tag structure provided below for every claim identified.
+            - Do NOT use bullet points, bolding (**), or numbering.
+            - DO NOT use any special characters or text enclosing methods.
+            - ONLY FOLLOW THE FORMAT; do not add any other text or characters.
+            - Each claim analysis must be a self-contained block using the tags.
 
             REQUIRED FORMAT PER CLAIM:
             {/Claim/} [Insert the specific claim identified] {/Claim/}
             {/ClaimRiskLevel/} [Low / Medium / High] {/ClaimRiskLevel/}
-            {/RiskLevelExplanation/} [Explain the risk based on evidence, language, and Philippine context] {/RiskLevelExplanation/}
-            {/VerificationMethod/} [Mention specific official sources or news outlets needed for verification] {/VerificationMethod/}
+            {/RiskLevelExplanation/} [Explain the risk using search results, evidence, and Philippine context. Explicitly mention if the info is outdated compared to 2026 facts.] {/RiskLevelExplanation/}
+            {/VerificationMethod/} [Mention specific official sources or news outlets used to verify the claim] {/VerificationMethod/}
+            {/OverallAssessment/} [Provide a final verdict on the reliability of the post as a whole] {/OverallAssessment/}
+
+            TEXT TO ANALYZE:
+            ${inputText}
+        `;
+
+        const prompt = `
+            TODAY'S DATE: ${formattedDate}
+
+            You are an AI assistant designed to analyze potential misinformation in social media content, specifically in the Philippine context. Your task is NOT to determine absolute truth, but to evaluate the RISK that the content may be misleading, false, or lacking context.
+
+            GROUNDING INSTRUCTION:
+            Before analyzing, you MUST use your Google Search tool to verify the current status of the people, events, and claims mentioned in the inputText. Compare the inputText against the most recent reputable news reports (from 2025-2026) to identify discrepancies or "zombie" misinformation (old news being shared as new).
+
+            ANALYSIS CRITERIA:
+            Identify Claims: Break the text into separate, identifiable statements. Include claims found within images if attached.
+            Assess Evidence & Language: Check for citations, emotional/sensational wording, and missing context.
+            Philippine Context: Consider local events (elections, typhoons, holidays), common local misinformation patterns, and Tagalog/Taglish nuances.
+            Assign Risk: LOW (credible), MEDIUM (suspicious/unverified), or HIGH (misleading/exaggerated).
+            Visual Integrity: Detect image fraud like fake news templates, mismatched fonts/logos, AI artifacts, or captions contradicting visual evidence.
+
+            OUTPUT RULES:
+            - You must use the exact tag structure provided below for every claim identified.
+            - STRICT BAN ON ESCAPE CHARACTERS: Do NOT use backslashes (\\), or escaped quotes (\\"). 
+            - STRICT BAN ON QUOTES: Do NOT enclose any words in double ("") or single ('') quotes within the explanation. Use plain text only.
+            - Do NOT use bullet points, bolding (**), or numbering.
+            - ONLY FOLLOW THE FORMAT; do not add any other text, characters, or markdown.
+            - Each claim analysis must be a self-contained block using the tags.
+
+            REQUIRED FORMAT PER CLAIM:
+            {/Claim/} [Insert the specific claim identified] {/Claim/}
+            {/ClaimRiskLevel/} [Low / Medium / High] {/ClaimRiskLevel/}
+            {/RiskLevelExplanation/} [Explain the risk using search results, evidence, and Philippine context. Explicitly mention if the info is outdated compared to 2026 facts.] {/RiskLevelExplanation/}
+            {/VerificationMethod/} [Mention specific official sources or news outlets used to verify the claim] {/VerificationMethod/}
             {/OverallAssessment/} [Provide a final verdict on the reliability of the post as a whole] {/OverallAssessment/}
 
             TEXT TO ANALYZE:
@@ -69,5 +109,3 @@ export async function evaluateContent(inputText, base64Image = null, mimeType = 
         console.error("Error generating content:", error.message);
     }
 }
-
-// evaluateContent("Many analysts agree that the Philippines has completely eliminated political dynasties due to strict enforcement of the 1987 Constitution, which successfully banned all family members from holding public office at the same time. As a result, elections have become fully merit-based, with candidates winning solely because of their qualifications rather than name recall or family connections. This reform is often cited as the main reason why political competition in the country is now considered one of the fairest in Southeast Asia.");

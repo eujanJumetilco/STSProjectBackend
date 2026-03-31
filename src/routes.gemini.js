@@ -5,8 +5,8 @@ const router = express.Router();
 
 router.post("/", async (req, res) => {
     try{
-        const { context } = req.body;
-        const result = await evaluateContent(context);
+        const { textInput, base64Image, mimeType } = req.body;
+        const result = await evaluateContent(textInput, base64Image, mimeType);
 
         res.status(200).json(result);
     }
