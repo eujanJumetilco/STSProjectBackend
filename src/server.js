@@ -7,9 +7,11 @@ app.use(
     cors({ origin: "*" })
 )
 
-app.listen(8000, () => {
-    console.log("Server is running on http://localhost:8000");
-})
+const PORT = process.env.PORT || 10000;
+
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Server is running on port ${PORT}`);
+});
 app.get("/", (req, res) => {
     console.log("Server is ready!");
 });
